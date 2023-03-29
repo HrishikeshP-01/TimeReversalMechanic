@@ -87,7 +87,9 @@ void UTimeRevComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	}
 	else if (!bOutOfData) // Reversing time
 	{
-		RunningTime += DeltaTime;
+		/*Since we are going to use the interpolation method, one advantage is that we can make the reversing slow by making the running time slow
+		As the objects will now be updated based on the running time value*/
+		RunningTime += DeltaTime * 0.2f;
 
 		auto Right = StoredFrames.GetTail();
 		auto Left = Right->GetPrevNode();
