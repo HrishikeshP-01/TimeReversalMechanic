@@ -38,6 +38,8 @@ void UTimeRevComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 	if (!bReversingTime) // Recording time data
 	{
+		/* First we ensure that the recorded time doesn't exceed 15s.
+		 So we remove the head FramePackage until the time is below 15s*/
 		while (RecordedTime >= 15.0f)
 		{
 			auto Head = StoredFrames.GetHead();
@@ -46,6 +48,13 @@ void UTimeRevComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 			RecordedTime -= HeadDT;
 		}
 
+		/* In this example I am only going to store the data of Static mesh components inside actors.
+		 I also assume that each actor only has 1 static mesh component
+		 & that static mesh component is also the root which is why I use the owner's location & rotation
+		 I need to cast to static mesh component so as to get the linear & angular velocity.
+		 
+		 Optimization - This can be optimized so that we do the casting call etc. only at the begin play & store the SMC/Owner variable
+		 so that we don't have to keep casting every frame */
 		AActor* Owner = GetOwner();
 		TArray<UActorComponent*> Components = Owner->GetComponentsByClass(UStaticMeshComponent::StaticClass());
 		if (Components.Num() > 0)
@@ -61,6 +70,7 @@ void UTimeRevComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 				StoredFrames.AddTail(Package);
 				RecordedTime += DeltaTime;
+				// Once we add a FramePackage we will have some data so bOutOfData will be false
 				bOutOfData = false;
 			}
 		}
