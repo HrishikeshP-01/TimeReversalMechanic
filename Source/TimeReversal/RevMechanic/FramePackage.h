@@ -18,8 +18,8 @@ struct FFramePackage
 
 	FVector Location;
 	FRotator Rotation;
-	FVector LinearVeloctiy;
-	FVector AngluarVelocity;
+	FVector LinearVelocity;
+	FVector AngularVelocity;
 
 	/*If we want to implement reversal for our player too. As it's a first person character we only need the above attributes along with where the camera looks each frame*/
 	bool bIsPlayerPawn;
@@ -34,7 +34,7 @@ FFramePackage::FFramePackage()
 }
 
 FFramePackage::FFramePackage(FVector InLocation, FRotator InRotation, FVector InLinearVelocity, FVector InAngularVelocity, float InDeltaTime) :
-	Location(InLocation), Rotation(InRotation), LinearVelocity(InLinearVelocity), AngularVelocity(InAngularVelocity), DelatTime(InDeltaTime)
+	Location(InLocation), Rotation(InRotation), LinearVelocity(InLinearVelocity), AngularVelocity(InAngularVelocity), DeltaTime(InDeltaTime)
 {
 	/* The above line means that I'm assigning the input parameters to the corresponding variables.
 	* This is the equivalent of writing: Location = InLocation; etc. inside the body.

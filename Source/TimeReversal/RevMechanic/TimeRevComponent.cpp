@@ -4,6 +4,8 @@
 #include "TimeRevComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimeReversal/TimeReversalCharacter.h"
+#include "FramePackage.h"
+#include "Components/StaticMeshComponent.h"
 
 // Sets default values for this component's properties
 UTimeRevComponent::UTimeRevComponent()
@@ -13,6 +15,9 @@ UTimeRevComponent::UTimeRevComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bReversingTime = false;
+
+	bOutOfData = true;
+	RecordedTime = 0.0f;
 }
 
 
@@ -31,7 +36,39 @@ void UTimeRevComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// ...
+	if (!bReversingTime) // Recording time data
+	{
+		while (RecordedTime >= 15.0f)
+		{
+			auto Head = StoredFrames.GetHead();
+			float HeadDT = Head->GetValue().DeltaTime;
+			StoredFrames.RemoveNode(Head);
+			RecordedTime -= HeadDT;
+		}
+
+		AActor* Owner = GetOwner();
+		TArray<UActorComponent*> Components = Owner->GetComponentsByClass(UStaticMeshComponent::StaticClass());
+		if (Components.Num() > 0)
+		{
+			UStaticMeshComponent* SMC = Cast<UStaticMeshComponent>(Components[0]);
+			if (SMC)
+			{
+				FFramePackage Package(Owner->GetActorLocation(),
+					Owner->GetActorRotation(),
+					SMC->GetPhysicsLinearVelocity(),
+					SMC->GetPhysicsAngularVelocityInDegrees(),
+					DeltaTime);
+
+				StoredFrames.AddTail(Package);
+				RecordedTime += DeltaTime;
+				bOutOfData = false;
+			}
+		}
+	}
+	else if (!bOutOfData) // Reversing time
+	{
+
+	}
 }
 
 void UTimeRevComponent::SetReversingTime(bool InReversingTime)
