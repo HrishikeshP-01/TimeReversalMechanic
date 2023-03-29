@@ -36,6 +36,12 @@ void UTimeRevComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 1.0f, FColor::Blue, FString::Printf(TEXT("Recorded Time: %f"), RecordedTime));
+		GEngine->AddOnScreenDebugMessage(2, 1.0f, FColor::Yellow, FString::Printf(TEXT("Running Time: %f"), RunningTime));
+	}
+
 	if (!bReversingTime) // Recording time data
 	{
 		RunningTime = 0.0f;
