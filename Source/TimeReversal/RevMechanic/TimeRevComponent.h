@@ -40,6 +40,10 @@ public:
 	 equal to the speed or position etc. of the objects while they were moving forward. So we need these 2 varables.*/
 	// Actual time passed since we started reversing time
 	float RunningTime;
+	// Running count of FramePackage delta times
+	float LeftReverseRunningTime;
+	float RightReverseRunningTime;
+
 	// Sum of the reversed FramePackage delta time
 	float ReverseRunningTime;
 
@@ -47,4 +51,6 @@ public:
 	float RecordedTime;
 
 	TDoubleLinkedList<FFramePackage> StoredFrames;
+
+	void SetActorVariables(FVector Location, FRotator Rotation, FVector LinearVelocity, FVector AngularVelocity);
 };

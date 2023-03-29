@@ -38,6 +38,10 @@ void UTimeRevComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 	if (!bReversingTime) // Recording time data
 	{
+		RunningTime = 0.0f;
+		LeftReverseRunningTime = 0.0f;
+		RightReverseRunningTime = 0.0f;
+
 		/* First we ensure that the recorded time doesn't exceed 15s.
 		 So we remove the head FramePackage until the time is below 15s*/
 		while (RecordedTime >= 15.0f)
@@ -77,38 +81,46 @@ void UTimeRevComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	}
 	else if (!bOutOfData) // Reversing time
 	{
-		/* First we are going to implement reversal under the assumption that frame rate at the time of recording time data
-		is same as the frame rate when we are reversing so we just have to use the frame packages in reverse order.
-		This will give us an idea of how our logic works & then we can factor in the variation in frame rate. */
-		auto Tail = StoredFrames.GetTail();
-		if (Tail) // If tail is valid
+		RunningTime += DeltaTime;
+
+		auto Right = StoredFrames.GetTail();
+		auto Left = Right->GetPrevNode();
+		if (!Left) { return; }
+		LeftReverseRunningTime = RightReverseRunningTime + Right->GetValue().DeltaTime;
+
+		while (RunningTime > LeftReverseRunningTime)
 		{
-			AActor* Owner = GetOwner();
-			Owner->SetActorLocation(Tail->GetValue().Location);
-			Owner->SetActorRotation(Tail->GetValue().Rotation);
+			RightReverseRunningTime += Right->GetValue().DeltaTime;
+			// RightReverseRunningTime = LeftReverseRunningTime;
+			Right = Left;
+			LeftReverseRunningTime += Left->GetValue().DeltaTime;
+			Left = Left->GetPrevNode();
 
-			TArray<UActorComponent*> Components = Owner->GetComponentsByClass(UStaticMeshComponent::StaticClass());
-			if (Components.Num() > 0)
-			{
-				UStaticMeshComponent* SMC = Cast<UStaticMeshComponent>(Components[0]);
-				if (SMC)
-				{
-					SMC->SetPhysicsLinearVelocity(Tail->GetValue().LinearVelocity);
-					SMC->SetPhysicsAngularVelocityInDegrees(Tail->GetValue().AngularVelocity);
-				}
-			}
-
-			if (StoredFrames.GetHead() == Tail) // Check if it's the last node
-			{
-				RecordedTime = 0.0f;
-				bOutOfData = true;
-			}
-			else
-			{
-				RecordedTime -= Tail->GetValue().DeltaTime;
-			}
-
+			auto Tail = StoredFrames.GetTail();
+			RecordedTime -= Tail->GetValue().DeltaTime;
 			StoredFrames.RemoveNode(Tail);
+			if (Left == StoredFrames.GetHead())
+			{
+				bOutOfData = true;
+				//RecordedTime = 0.0f;
+				break;
+			}
+		}
+		// Double checking to make sure RecordedTime is between RightReverseRunningTime & LeftReverseRunningTime
+		if (RunningTime >= RightReverseRunningTime && RunningTime <= LeftReverseRunningTime)
+		{
+			/*Now we have to compute the alpha for the future interp functions. To get the alpha we use the LRRT & RRRT as intervals
+			& RT as value. We have to convert this such that we get the ratio/fraction which is between 0 & 1*/
+			float DT = RunningTime - RightReverseRunningTime;
+			float Interval = LeftReverseRunningTime - RightReverseRunningTime;
+			float fraction = DT / Interval;
+
+			FVector InterpLoc = FMath::VInterpTo(Right->GetValue().Location, Left->GetValue().Location, fraction, 1.0f);
+			FRotator InterpRot = FMath::RInterpTo(Right->GetValue().Rotation, Left->GetValue().Rotation, fraction, 1.0f);
+			FVector InterpLinVel = FMath::VInterpTo(Right->GetValue().LinearVelocity, Left->GetValue().LinearVelocity, fraction, 1.0f);
+			FVector InterpAngVel = FMath::VInterpTo(Right->GetValue().AngularVelocity, Left->GetValue().AngularVelocity, fraction, 1.0f);
+
+			SetActorVariables(InterpLoc, InterpRot, InterpLinVel, InterpAngVel);
 		}
 	}
 }
@@ -119,4 +131,24 @@ void UTimeRevComponent::SetReversingTime(bool InReversingTime)
 
 	if (bReversingTime) { UE_LOG(LogTemp, Log, TEXT("Reversing Time")); }
 	else { UE_LOG(LogTemp, Log, TEXT("Stopped Reversing Time")); }
+}
+
+void UTimeRevComponent::SetActorVariables(FVector Location, FRotator Rotation, FVector LinearVelocity, FVector AngularVelocity)
+{
+	AActor* Owner = GetOwner();
+	Owner->SetActorLocation(Location);
+	Owner->SetActorRotation(Rotation);
+
+	TArray<UActorComponent*> Components = Owner->GetComponentsByClass(UStaticMeshComponent::StaticClass());
+	if (Components.Num() > 0)
+	{
+		UStaticMeshComponent* SMC = Cast<UStaticMeshComponent>(Components[0]);
+		if (SMC)
+		{
+			SMC->SetPhysicsLinearVelocity(LinearVelocity);
+			SMC->SetPhysicsAngularVelocityInDegrees(AngularVelocity);
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Executed: SetActorVariables"));
 }
