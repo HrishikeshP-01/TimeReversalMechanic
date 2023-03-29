@@ -77,7 +77,39 @@ void UTimeRevComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	}
 	else if (!bOutOfData) // Reversing time
 	{
+		/* First we are going to implement reversal under the assumption that frame rate at the time of recording time data
+		is same as the frame rate when we are reversing so we just have to use the frame packages in reverse order.
+		This will give us an idea of how our logic works & then we can factor in the variation in frame rate. */
+		auto Tail = StoredFrames.GetTail();
+		if (Tail) // If tail is valid
+		{
+			AActor* Owner = GetOwner();
+			Owner->SetActorLocation(Tail->GetValue().Location);
+			Owner->SetActorRotation(Tail->GetValue().Rotation);
 
+			TArray<UActorComponent*> Components = Owner->GetComponentsByClass(UStaticMeshComponent::StaticClass());
+			if (Components.Num() > 0)
+			{
+				UStaticMeshComponent* SMC = Cast<UStaticMeshComponent>(Components[0]);
+				if (SMC)
+				{
+					SMC->SetPhysicsLinearVelocity(Tail->GetValue().LinearVelocity);
+					SMC->SetPhysicsAngularVelocityInDegrees(Tail->GetValue().AngularVelocity);
+				}
+			}
+
+			if (StoredFrames.GetHead() == Tail) // Check if it's the last node
+			{
+				RecordedTime = 0.0f;
+				bOutOfData = true;
+			}
+			else
+			{
+				RecordedTime -= Tail->GetValue().DeltaTime;
+			}
+
+			StoredFrames.RemoveNode(Tail);
+		}
 	}
 }
 
